@@ -7,7 +7,7 @@ CREATE TABLE products (
     description TEXT,
     image_url TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
-)
+);
 
 -- Таблица пользователей
 CREATE TABLE users (
@@ -17,5 +17,5 @@ CREATE TABLE users (
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'user',
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
-)
+);
 
