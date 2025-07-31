@@ -44,6 +44,25 @@ func (r *UserRepo) GetByID(ctx context.Context, id int) (*user.User, error) {
 	return &userFromDB, nil
 }
 
+func (r *UserRepo) GetAll(ctx context.Context) ([]user.User, error) {
+	const query = `SELECT * FROM users`
+	var users []user.User
+	row, err := r.db.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get users: %w", err)
+	}
+	defer row.Close()
+	for row.Next() {
+		var userFromDB user.User
+		err = row.Scan(&userFromDB.ID, &userFromDB.Username, &userFromDB.Email, &userFromDB.Role, &userFromDB.CreatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get users: %w", err)
+		}
+		users = append(users, userFromDB)
+	}
+	return users, nil
+}
+
 func (r *UserRepo) UpdateByID(ctx context.Context, id int, user *user.User) error {
 	const query = `UPDATE users SET username = $1, email = $2, role = $3 WHERE id = $4`
 	_, err := r.db.Exec(ctx, query, user.Username, user.Email, user.Role, id)
