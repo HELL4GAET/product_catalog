@@ -40,7 +40,7 @@ func (r *ProductRepo) GetByID(ctx context.Context, id int) (*product.Product, er
 	return &productCard, nil
 }
 
-func (r *ProductRepo) GetAll(ctx context.Context) (*[]product.Product, error) {
+func (r *ProductRepo) GetAll(ctx context.Context) ([]product.Product, error) {
 	const query = `SELECT * FROM products`
 	var products []product.Product
 	row, err := r.db.Query(ctx, query)
@@ -56,7 +56,7 @@ func (r *ProductRepo) GetAll(ctx context.Context) (*[]product.Product, error) {
 		}
 		products = append(products, productCard)
 	}
-	return &products, nil
+	return products, nil
 }
 
 func (r *ProductRepo) UpdateByID(ctx context.Context, id int, product *product.Product) error {
