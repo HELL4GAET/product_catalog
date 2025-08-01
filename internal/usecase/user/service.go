@@ -19,12 +19,17 @@ type Repository interface {
 	ExistsByEmailOrUsername(ctx context.Context, email, username string) (bool, error)
 }
 
-type Service struct {
-	repo   Repository
-	hasher auth.Hasher
+type Hasher interface {
+	Hash(password string) (string, error)
+	Compare(hashedPassword, password string) error
 }
 
-func NewUserService(repo Repository, hasher auth.Hasher) *Service {
+type Service struct {
+	repo   Repository
+	hasher Hasher
+}
+
+func NewUserService(repo Repository, hasher Hasher) *Service {
 	return &Service{repo: repo, hasher: hasher}
 }
 

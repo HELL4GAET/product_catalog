@@ -1,29 +1,29 @@
 package auth
 
-import "fmt"
+import (
+	"fmt"
+	"golang.org/x/crypto/bcrypt"
+)
 
-type Hasher interface {
-	Hash(password string) (string, error)
-	Compare(hashedPassword, password string) error
+type BcryptHasher struct{}
+
+func NewHasher() *BcryptHasher {
+	return &BcryptHasher{}
 }
 
-type bcryptHasher struct{}
-
-func NewHasher() Hasher {
-	return &bcryptHasher{}
-}
-
-func (h *bcryptHasher) Hash(password string) (string, error) {
-	hash, err := HashPassword(password)
+func (h *BcryptHasher) Hash(password string) (string, error) {
+	const cost = 12
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), cost)
 	if err != nil {
-		return "", fmt.Errorf("hasher: hash password: %w", err)
+		return "", fmt.Errorf("failed to hash password: %w", err)
 	}
-	return hash, nil
+	return string(hash), nil
 }
 
-func (h *bcryptHasher) Compare(hashedPassword, password string) error {
-	if err := ComparePassword(hashedPassword, password); err != nil {
-		return fmt.Errorf("hasher: compare password: %w", err)
+func (h *BcryptHasher) Compare(hashedPassword, password string) error {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	if err != nil {
+		return fmt.Errorf("invalid password: %w", err)
 	}
 	return nil
 }
