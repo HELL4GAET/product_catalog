@@ -1,0 +1,19 @@
+app:
+  name: "Product Catalog"
+  version: "1.0.0"
+  env: "local"
+  log_level: "info"
+  log_encoding: "console"
+
+server:
+  port: "1488"
+
+jwt:
+  token_ttl_seconds: 3600
+
+database:
+  host: "localhost"
+  port: "5555"
+  user: "gigauser"
+  name: "product_catalog"
+  sslmode: "disable"

@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"product-catalog/internal/adapters/db"
+	"product-catalog/internal/errors"
 )
 
 type Role string
@@ -13,7 +13,7 @@ const (
 
 func (r Role) CanDoAdminAction() error {
 	if r != RoleAdmin {
-		return db.ErrForbidden
+		return errors.ErrForbidden
 	}
 	return nil
 }

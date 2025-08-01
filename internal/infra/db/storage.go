@@ -10,7 +10,7 @@ type Storage struct {
 	db *pgxpool.Pool
 }
 
-func (s *Storage) New(ctx context.Context, connectionString string) (*Storage, error) {
+func New(ctx context.Context, connectionString string) (*Storage, error) {
 	dbPool, err := pgxpool.New(ctx, connectionString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)

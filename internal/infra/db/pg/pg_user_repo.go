@@ -1,4 +1,4 @@
-package db
+package pg
 
 import (
 	"context"
@@ -7,7 +7,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"product-catalog/internal/user"
+	"product-catalog/internal/entity"
+	custom "product-catalog/internal/errors"
 )
 
 type UserRepo struct {
@@ -18,42 +19,42 @@ func NewUserRepo(db *pgxpool.Pool) *UserRepo {
 	return &UserRepo{db: db}
 }
 
-func (r *UserRepo) Create(ctx context.Context, user *user.User) error {
+func (r *UserRepo) Create(ctx context.Context, user *entity.User) error {
 	const query = `INSERT INTO users (username, email, password_hash, role, created_at) VALUES ($1, $2, $3, $4, $5)`
 	_, err := r.db.Exec(ctx, query, user.Username, user.Email, user.PasswordHash, user.Role, user.CreatedAt)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return ErrConflict
+			return custom.ErrConflict
 		}
 		return fmt.Errorf("failed to create user: %w", err)
 	}
 	return nil
 }
 
-func (r *UserRepo) GetByID(ctx context.Context, id int) (*user.User, error) {
+func (r *UserRepo) GetByID(ctx context.Context, id int) (*entity.User, error) {
 	const query = `SELECT id, username, email, role, created_at FROM users WHERE id = $1`
-	var userFromDB user.User
+	var userFromDB entity.User
 	err := r.db.QueryRow(ctx, query, id).Scan(&userFromDB.ID, &userFromDB.Username, &userFromDB.Email, &userFromDB.Role, &userFromDB.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrNotFound
+			return nil, custom.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get user by id: %w", err)
 	}
 	return &userFromDB, nil
 }
 
-func (r *UserRepo) GetAll(ctx context.Context) ([]user.User, error) {
+func (r *UserRepo) GetAll(ctx context.Context) ([]entity.User, error) {
 	const query = `SELECT * FROM users`
-	var users []user.User
+	var users []entity.User
 	row, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get users: %w", err)
 	}
 	defer row.Close()
 	for row.Next() {
-		var userFromDB user.User
+		var userFromDB entity.User
 		err = row.Scan(&userFromDB.ID, &userFromDB.Username, &userFromDB.Email, &userFromDB.Role, &userFromDB.CreatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get users: %w", err)
@@ -63,13 +64,13 @@ func (r *UserRepo) GetAll(ctx context.Context) ([]user.User, error) {
 	return users, nil
 }
 
-func (r *UserRepo) UpdateByID(ctx context.Context, id int, user *user.User) error {
+func (r *UserRepo) UpdateByID(ctx context.Context, id int, user *entity.User) error {
 	const query = `UPDATE users SET username = $1, email = $2, role = $3 WHERE id = $4`
 	_, err := r.db.Exec(ctx, query, user.Username, user.Email, user.Role, id)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return ErrConflict
+			return custom.ErrConflict
 		}
 		return fmt.Errorf("failed to update user: %w", err)
 	}
@@ -81,9 +82,26 @@ func (r *UserRepo) DeleteByID(ctx context.Context, id int) error {
 	_, err := r.db.Exec(ctx, query, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotFound
+			return custom.ErrNotFound
 		}
 		return fmt.Errorf("failed to delete user: %w", err)
 	}
 	return nil
+}
+
+func (r *UserRepo) ExistsByEmailOrUsername(ctx context.Context, email, username string) (bool, error) {
+	const query = `
+		SELECT 1 FROM users 
+		WHERE email = $1 OR username = $2 
+		LIMIT 1
+	`
+	var exists int
+	err := r.db.QueryRow(ctx, query, email, username).Scan(&exists)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to check if user exists: %w", err)
+	}
+	return true, nil
 }
