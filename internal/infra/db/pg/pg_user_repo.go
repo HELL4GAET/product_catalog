@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"product-catalog/internal/auth"
 	"product-catalog/internal/entity"
 	custom "product-catalog/internal/errors"
 )
@@ -104,4 +105,20 @@ func (r *UserRepo) ExistsByEmailOrUsername(ctx context.Context, email, username 
 		return false, fmt.Errorf("failed to check if user exists: %w", err)
 	}
 	return true, nil
+}
+
+func (r *UserRepo) GetUserPassHashIDRoleByEmail(ctx context.Context, email string) (string, int, auth.Role, error) {
+	const query = `SELECT password_hash, id, role FROM users WHERE email = $1`
+
+	var pwHash string
+	var id int
+	var role auth.Role
+	err := r.db.QueryRow(ctx, query, email).Scan(&pwHash, &id, &role)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", 0, "", custom.ErrNotFound
+		}
+		return "", 0, "", fmt.Errorf("failed to check if user exists: %w", err)
+	}
+	return pwHash, id, role, nil
 }

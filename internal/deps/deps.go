@@ -49,14 +49,14 @@ func New(cfg *config.Config) (*Deps, error) {
 	productRepo := pg.NewProductRepo(pool)
 
 	hasher := auth.NewHasher()
-	userSvc := user.NewUserService(userRepo, hasher)
+	userSvc := user.NewUserService(userRepo, hasher, jwtM)
 	prodSvc := product.NewProductService(productRepo)
 
-	userH := h.NewUserHandler(userSvc)
+	userH := h.NewUserHandler(userSvc, logger)
 	productH := h.NewProductHandler(prodSvc)
 
 	httpMiddles := []func(handler http.Handler) http.Handler{
-		loggingM.Handle,
+		loggingM.LoggingMiddleware,
 		authM.AuthMiddleware,
 	}
 

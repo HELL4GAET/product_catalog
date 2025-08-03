@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	auth "product-catalog/internal/auth"
-	h "product-catalog/internal/dto"
+	"product-catalog/internal/dto"
 	"product-catalog/internal/entity"
 	custom "product-catalog/internal/errors"
 	"time"
@@ -17,6 +17,12 @@ type Repository interface {
 	DeleteByID(ctx context.Context, id int) error
 	GetAll(ctx context.Context) ([]entity.User, error)
 	ExistsByEmailOrUsername(ctx context.Context, email, username string) (bool, error)
+	GetUserPassHashIDRoleByEmail(ctx context.Context, email string) (string, int, auth.Role, error)
+}
+
+type JwtService interface {
+	GenerateToken(userID int, role auth.Role) (string, error)
+	ParseToken(tokenStr string) (*auth.JWTClaims, error)
 }
 
 type Hasher interface {
@@ -27,13 +33,14 @@ type Hasher interface {
 type Service struct {
 	repo   Repository
 	hasher Hasher
+	jwtSvc JwtService
 }
 
-func NewUserService(repo Repository, hasher Hasher) *Service {
-	return &Service{repo: repo, hasher: hasher}
+func NewUserService(repo Repository, hasher Hasher, jwtSvc JwtService) *Service {
+	return &Service{repo: repo, hasher: hasher, jwtSvc: jwtSvc}
 }
 
-func (s *Service) CreateUser(ctx context.Context, input *h.CreateUserInput) error {
+func (s *Service) CreateUser(ctx context.Context, input *dto.CreateUserInput) error {
 	exists, err := s.repo.ExistsByEmailOrUsername(ctx, input.Email, input.Username)
 	if err != nil {
 		return fmt.Errorf("failed to check user exists: %w", err)
@@ -92,4 +99,22 @@ func (s *Service) GetAllUsers(ctx context.Context) ([]entity.User, error) {
 		return nil, fmt.Errorf("failed to get all users: %w", err)
 	}
 	return users, nil
+}
+
+func (s *Service) Login(ctx context.Context, email, password string) (string, error) {
+	pwHash, id, role, err := s.repo.GetUserPassHashIDRoleByEmail(ctx, email)
+	if err != nil {
+		return "", fmt.Errorf("failed to check user exists: %w", err)
+	}
+
+	err = s.hasher.Compare(pwHash, password)
+	if err != nil {
+		return "", custom.ErrUnauthorized
+	}
+
+	token, err := s.jwtSvc.GenerateToken(id, role)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate token: %w", err)
+	}
+	return token, nil
 }
