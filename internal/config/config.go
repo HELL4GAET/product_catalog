@@ -17,6 +17,7 @@ type Config struct {
 	Server   ServerConfig   `yaml:"server"`
 	JWT      JWTConfig      `yaml:"jwt"`
 	Database DatabaseConfig `yaml:"database"`
+	Storage  StorageConfig  `yaml:"storage"`
 }
 
 type AppConfig struct {
@@ -44,6 +45,14 @@ type DatabaseConfig struct {
 	Pass    string `yaml:"-"`
 }
 
+type StorageConfig struct {
+	Endpoint  string `yaml:"endpoint"`
+	AccessKey string `yaml:"access_key"`
+	SecretKey string `yaml:"secret_key"`
+	UseSSL    bool   `yaml:"use_ssl"`
+	Bucket    string `yaml:"bucket"`
+}
+
 var (
 	cfg  *Config
 	once sync.Once
@@ -68,6 +77,9 @@ func Load() *Config {
 		if err = decoder.Decode(cfg); err != nil {
 			log.Fatalf("failed to decode config.yaml: %v", err)
 		}
+
+		cfg.Storage.AccessKey = os.Getenv("MINIO_ACCESS_KEY")
+		cfg.Storage.SecretKey = os.Getenv("MINIO_SECRET_KEY")
 
 		cfg.JWT.Secret = os.Getenv("JWT_SECRET")
 		cfg.Database.Pass = os.Getenv("DB_PASSWORD")
@@ -104,6 +116,15 @@ func (c *Config) validate() error {
 	}
 	if c.JWT.TokenTTLSeconds <= 0 {
 		return errors.New("jwt.token_ttl_seconds must be positive")
+	}
+	if c.Storage.AccessKey == "" || c.Storage.SecretKey == "" {
+		return errors.New("minio access key and secret key are required")
+	}
+	if c.Storage.Endpoint == "" {
+		return errors.New("minio endpoint is required")
+	}
+	if c.Storage.Bucket == "" {
+		return errors.New("minio bucket is required")
 	}
 	return nil
 }
