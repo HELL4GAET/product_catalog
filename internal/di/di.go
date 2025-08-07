@@ -5,7 +5,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 	"net/http"
+	"product-catalog/internal/adapters/storage"
 	"product-catalog/internal/infra/db/pg"
+	"product-catalog/internal/service/file"
 	"time"
 
 	"product-catalog/internal/auth"
@@ -26,6 +28,7 @@ type Deps struct {
 
 	UserService    *user.Service
 	ProductService *product.Service
+	FileService    *file.FileService
 
 	UserHandler    *h.UserHandler
 	ProductHandler *h.ProductHandler
@@ -52,8 +55,15 @@ func New(cfg *config.Config) (*Deps, error) {
 	userSvc := user.NewUserService(userRepo, hasher, jwtM)
 	prodSvc := product.NewProductService(productRepo)
 
+	storageCfg := storage.NewConfig(cfg)
+	minioStorage, err := storage.NewMinioStorage(storageCfg)
+	if err != nil {
+		logger.Fatal("failed to init minio storage", zap.Error(err))
+	}
+	fileSvc := file.NewFileService(minioStorage)
+
 	userH := h.NewUserHandler(userSvc, logger)
-	productH := h.NewProductHandler(prodSvc)
+	productH := h.NewProductHandler(prodSvc, fileSvc, logger)
 
 	httpMiddles := []func(handler http.Handler) http.Handler{
 		loggingM.LoggingMiddleware,
@@ -68,6 +78,7 @@ func New(cfg *config.Config) (*Deps, error) {
 		HTTPMiddleware: httpMiddles,
 		UserService:    userSvc,
 		ProductService: prodSvc,
+		FileService:    fileSvc,
 		UserHandler:    userH,
 		ProductHandler: productH,
 	}, nil
