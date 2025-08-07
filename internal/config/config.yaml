@@ -17,3 +17,8 @@ database:
   user: "gigauser"
   name: "product_catalog"
   sslmode: "disable"
+
+storage:
+  endpoint: "localhost:9000"
+  use_ssl: false
+  bucket: "uploads"
