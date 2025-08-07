@@ -23,7 +23,7 @@ func main() {
 	r.Use(d.HTTPMiddleware...)
 
 	r.Mount("/users", d.UserHandler.Routes())
-	r.Mount("products", d.ProductHandler.Routes())
+	r.Mount("/products", d.ProductHandler.Routes())
 
 	addr := ":" + cfg.Server.Port
 	d.Logger.Info("server started", zap.String("addr", addr))
