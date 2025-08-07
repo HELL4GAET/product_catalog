@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"product-catalog/internal/auth"
-	"product-catalog/internal/entity"
+	"product-catalog/internal/domain"
 	custom "product-catalog/internal/errors"
 )
 
@@ -20,7 +20,7 @@ func NewUserRepo(db *pgxpool.Pool) *UserRepo {
 	return &UserRepo{db: db}
 }
 
-func (r *UserRepo) Create(ctx context.Context, user *entity.User) error {
+func (r *UserRepo) Create(ctx context.Context, user *domain.User) error {
 	const query = `INSERT INTO users (username, email, password_hash, role, created_at) VALUES ($1, $2, $3, $4, $5)`
 	_, err := r.db.Exec(ctx, query, user.Username, user.Email, user.PasswordHash, user.Role, user.CreatedAt)
 	if err != nil {
@@ -33,9 +33,9 @@ func (r *UserRepo) Create(ctx context.Context, user *entity.User) error {
 	return nil
 }
 
-func (r *UserRepo) GetByID(ctx context.Context, id int) (*entity.User, error) {
+func (r *UserRepo) GetByID(ctx context.Context, id int) (*domain.User, error) {
 	const query = `SELECT id, username, email, role, created_at FROM users WHERE id = $1`
-	var userFromDB entity.User
+	var userFromDB domain.User
 	err := r.db.QueryRow(ctx, query, id).Scan(&userFromDB.ID, &userFromDB.Username, &userFromDB.Email, &userFromDB.Role, &userFromDB.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -46,16 +46,16 @@ func (r *UserRepo) GetByID(ctx context.Context, id int) (*entity.User, error) {
 	return &userFromDB, nil
 }
 
-func (r *UserRepo) GetAll(ctx context.Context) ([]entity.User, error) {
+func (r *UserRepo) GetAll(ctx context.Context) ([]domain.User, error) {
 	const query = `SELECT * FROM users`
-	var users []entity.User
+	var users []domain.User
 	row, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get users: %w", err)
 	}
 	defer row.Close()
 	for row.Next() {
-		var userFromDB entity.User
+		var userFromDB domain.User
 		err = row.Scan(&userFromDB.ID, &userFromDB.Username, &userFromDB.Email, &userFromDB.Role, &userFromDB.CreatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get users: %w", err)
@@ -65,9 +65,9 @@ func (r *UserRepo) GetAll(ctx context.Context) ([]entity.User, error) {
 	return users, nil
 }
 
-func (r *UserRepo) UpdateByID(ctx context.Context, id int, user *entity.User) error {
+func (r *UserRepo) UpdateByID(ctx context.Context, id int, username, email string, role auth.Role) error {
 	const query = `UPDATE users SET username = $1, email = $2, role = $3 WHERE id = $4`
-	_, err := r.db.Exec(ctx, query, user.Username, user.Email, user.Role, id)
+	_, err := r.db.Exec(ctx, query, username, email, role, id)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
@@ -107,7 +107,7 @@ func (r *UserRepo) ExistsByEmailOrUsername(ctx context.Context, email, username 
 	return true, nil
 }
 
-func (r *UserRepo) GetUserPassHashIDRoleByEmail(ctx context.Context, email string) (string, int, auth.Role, error) {
+func (r *UserRepo) GetUserCredsAndRoleByEmail(ctx context.Context, email string) (string, int, auth.Role, error) {
 	const query = `SELECT password_hash, id, role FROM users WHERE email = $1`
 
 	var pwHash string

@@ -1,4 +1,4 @@
-package deps
+package di
 
 import (
 	"context"
@@ -11,9 +11,9 @@ import (
 	"product-catalog/internal/auth"
 	"product-catalog/internal/config"
 	l "product-catalog/internal/logger"
+	"product-catalog/internal/service/product"
+	"product-catalog/internal/service/user"
 	h "product-catalog/internal/transport/http"
-	"product-catalog/internal/usecase/product"
-	"product-catalog/internal/usecase/user"
 )
 
 type Deps struct {

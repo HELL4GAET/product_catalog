@@ -4,20 +4,20 @@ import (
 	"context"
 	"fmt"
 	auth "product-catalog/internal/auth"
+	"product-catalog/internal/domain"
 	"product-catalog/internal/dto"
-	"product-catalog/internal/entity"
 	custom "product-catalog/internal/errors"
 	"time"
 )
 
 type Repository interface {
-	Create(ctx context.Context, user *entity.User) error
-	GetByID(ctx context.Context, id int) (*entity.User, error)
-	UpdateByID(ctx context.Context, id int, user *entity.User) error
+	Create(ctx context.Context, user *domain.User) error
+	GetByID(ctx context.Context, id int) (*domain.User, error)
+	UpdateByID(ctx context.Context, id int, username, email string, role auth.Role) error
 	DeleteByID(ctx context.Context, id int) error
-	GetAll(ctx context.Context) ([]entity.User, error)
+	GetAll(ctx context.Context) ([]domain.User, error)
 	ExistsByEmailOrUsername(ctx context.Context, email, username string) (bool, error)
-	GetUserPassHashIDRoleByEmail(ctx context.Context, email string) (string, int, auth.Role, error)
+	GetUserCredsAndRoleByEmail(ctx context.Context, email string) (string, int, auth.Role, error)
 }
 
 type JwtService interface {
@@ -54,7 +54,7 @@ func (s *Service) CreateUser(ctx context.Context, input *dto.CreateUserInput) er
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	newUser := &entity.User{
+	newUser := &domain.User{
 		Username:     input.Username,
 		Email:        input.Email,
 		PasswordHash: hash,
@@ -69,23 +69,50 @@ func (s *Service) CreateUser(ctx context.Context, input *dto.CreateUserInput) er
 	return nil
 }
 
-func (s *Service) UpdateUserByID(ctx context.Context, id int, userInfo *entity.User) error {
-	err := s.repo.UpdateByID(ctx, id, userInfo)
+func (s *Service) UpdateUserByID(ctx context.Context, requesterID, targetID int, input *dto.UpdateUserInput, role auth.Role) error {
+	if role != auth.RoleAdmin && requesterID != targetID {
+		return custom.ErrForbidden
+	}
+
+	userFromDB, err := s.repo.GetByID(ctx, targetID)
 	if err != nil {
-		return fmt.Errorf("failed to update user by id: %w", err)
+		return fmt.Errorf("failed to get user: %w", err)
+	}
+
+	newRole := userFromDB.Role
+	if role == auth.RoleAdmin && input.Role != nil {
+		newRole = *input.Role
+	}
+
+	username := userFromDB.Username
+	if input.Username != nil {
+		username = *input.Username
+	}
+
+	email := userFromDB.Email
+	if input.Email != nil {
+		email = *input.Email
+	}
+
+	err = s.repo.UpdateByID(ctx, targetID, username, email, newRole)
+	if err != nil {
+		return fmt.Errorf("failed to update user: %w", err)
 	}
 	return nil
 }
 
-func (s *Service) DeleteUserByID(ctx context.Context, id int) error {
-	err := s.repo.DeleteByID(ctx, id)
+func (s *Service) DeleteUserByID(ctx context.Context, requesterID, targetID int, role auth.Role) error {
+	if role != auth.RoleAdmin && requesterID != targetID {
+		return custom.ErrForbidden
+	}
+	err := s.repo.DeleteByID(ctx, targetID)
 	if err != nil {
-		return fmt.Errorf("failed to delete user by id: %w", err)
+		return fmt.Errorf("failed to delete user: %w", err)
 	}
 	return nil
 }
 
-func (s *Service) GetUserByID(ctx context.Context, id int) (*entity.User, error) {
+func (s *Service) GetUserByID(ctx context.Context, id int) (*domain.User, error) {
 	userFromDB, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user by id: %w", err)
@@ -93,7 +120,7 @@ func (s *Service) GetUserByID(ctx context.Context, id int) (*entity.User, error)
 	return userFromDB, nil
 }
 
-func (s *Service) GetAllUsers(ctx context.Context) ([]entity.User, error) {
+func (s *Service) GetAllUsers(ctx context.Context) ([]domain.User, error) {
 	users, err := s.repo.GetAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all users: %w", err)
@@ -102,7 +129,7 @@ func (s *Service) GetAllUsers(ctx context.Context) ([]entity.User, error) {
 }
 
 func (s *Service) Login(ctx context.Context, email, password string) (string, error) {
-	pwHash, id, role, err := s.repo.GetUserPassHashIDRoleByEmail(ctx, email)
+	pwHash, id, role, err := s.repo.GetUserCredsAndRoleByEmail(ctx, email)
 	if err != nil {
 		return "", fmt.Errorf("failed to check user exists: %w", err)
 	}

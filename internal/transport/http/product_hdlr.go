@@ -4,14 +4,14 @@ import (
 	"context"
 	"github.com/go-chi/chi/v5"
 	"net/http"
-	"product-catalog/internal/entity"
+	"product-catalog/internal/domain"
 )
 
 type ProductService interface {
-	CreateProduct(ctx context.Context, product *entity.Product) (int, error)
-	GetProductByID(ctx context.Context, id int) (*entity.Product, error)
-	GetAllProducts(ctx context.Context) ([]entity.Product, error)
-	UpdateProductByID(ctx context.Context, id int, product *entity.Product) error
+	CreateProduct(ctx context.Context, product *domain.Product) (int, error)
+	GetProductByID(ctx context.Context, id int) (*domain.Product, error)
+	GetAllProducts(ctx context.Context) ([]domain.Product, error)
+	UpdateProductByID(ctx context.Context, id int, product *domain.Product) error
 	DeleteProductByID(ctx context.Context, id int) error
 }
 

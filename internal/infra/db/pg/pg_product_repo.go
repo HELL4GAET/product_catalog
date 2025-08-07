@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"product-catalog/internal/entity"
+	"product-catalog/internal/domain"
 	custom "product-catalog/internal/errors"
 )
 
@@ -18,7 +18,7 @@ func NewProductRepo(db *pgxpool.Pool) *ProductRepo {
 	return &ProductRepo{db: db}
 }
 
-func (r *ProductRepo) Create(ctx context.Context, product *entity.Product) (int, error) {
+func (r *ProductRepo) Create(ctx context.Context, product *domain.Product) (int, error) {
 	const query = `INSERT INTO products (title, price, description, created_at) VALUES ($1, $2, $3, $4) RETURNING id`
 	var productID int
 	err := r.db.QueryRow(ctx, query, product.Title, product.Price, product.Description, product.CreatedAt).Scan(&productID)
@@ -28,9 +28,9 @@ func (r *ProductRepo) Create(ctx context.Context, product *entity.Product) (int,
 	return productID, nil
 }
 
-func (r *ProductRepo) GetByID(ctx context.Context, id int) (*entity.Product, error) {
+func (r *ProductRepo) GetByID(ctx context.Context, id int) (*domain.Product, error) {
 	const query = `SELECT id, title, price, description, image_url, created_at FROM products WHERE id = $1`
-	var productCard entity.Product
+	var productCard domain.Product
 	err := r.db.QueryRow(ctx, query, id).Scan(&productCard.ID, &productCard.Title, &productCard.Price, &productCard.Description, &productCard.Available, &productCard.ImageURL, &productCard.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -41,16 +41,16 @@ func (r *ProductRepo) GetByID(ctx context.Context, id int) (*entity.Product, err
 	return &productCard, nil
 }
 
-func (r *ProductRepo) GetAll(ctx context.Context) ([]entity.Product, error) {
+func (r *ProductRepo) GetAll(ctx context.Context) ([]domain.Product, error) {
 	const query = `SELECT * FROM products`
-	var products []entity.Product
+	var products []domain.Product
 	row, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get products: %w", err)
 	}
 	defer row.Close()
 	for row.Next() {
-		var productCard entity.Product
+		var productCard domain.Product
 		err = row.Scan(&productCard.ID, &productCard.Title, &productCard.Price, &productCard.Description, &productCard.Available, &productCard.ImageURL, &productCard.CreatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get products: %w", err)
@@ -60,7 +60,7 @@ func (r *ProductRepo) GetAll(ctx context.Context) ([]entity.Product, error) {
 	return products, nil
 }
 
-func (r *ProductRepo) UpdateByID(ctx context.Context, id int, product *entity.Product) error {
+func (r *ProductRepo) UpdateByID(ctx context.Context, id int, product *domain.Product) error {
 	const query = `UPDATE products SET title = $1, price = $2, description = $3, available = $4 WHERE id = $5`
 	_, err := r.db.Exec(ctx, query, product.Title, product.Price, product.Description, product.Available, id)
 	if err != nil {

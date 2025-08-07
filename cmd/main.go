@@ -6,15 +6,15 @@ import (
 	"log"
 	"net/http"
 	"product-catalog/internal/config"
-	"product-catalog/internal/deps"
+	"product-catalog/internal/di"
 )
 
 func main() {
 	cfg := config.Load()
 
-	d, err := deps.New(cfg)
+	d, err := di.New(cfg)
 	if err != nil {
-		log.Fatalf("failed to init deps: %v", err)
+		log.Fatalf("failed to init di: %v", err)
 	}
 	defer d.DBPool.Close()
 	defer d.Logger.Sync()
