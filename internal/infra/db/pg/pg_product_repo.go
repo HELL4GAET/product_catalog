@@ -19,7 +19,7 @@ func NewProductRepo(db *pgxpool.Pool) *ProductRepo {
 }
 
 func (r *ProductRepo) Create(ctx context.Context, product *domain.Product) (int, error) {
-	const query = `INSERT INTO products (title, price, description, created_at) VALUES ($1, $2, $3, $4) RETURNING id`
+	const query = `INSERT INTO products (title, price, description, image_url, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id`
 	var productID int
 	err := r.db.QueryRow(ctx, query, product.Title, product.Price, product.Description, product.CreatedAt).Scan(&productID)
 	if err != nil {
