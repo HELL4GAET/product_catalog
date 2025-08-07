@@ -84,6 +84,10 @@ func Load() *Config {
 		cfg.JWT.Secret = os.Getenv("JWT_SECRET")
 		cfg.Database.Pass = os.Getenv("DB_PASSWORD")
 
+		if envEndpoint := os.Getenv("MINIO_ENDPOINT"); envEndpoint != "" {
+			cfg.Storage.Endpoint = envEndpoint
+		}
+
 		if err = cfg.validate(); err != nil {
 			log.Fatalf("configuration validation failed: %v", err)
 		}

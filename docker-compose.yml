@@ -1,0 +1,70 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: product_catalog
+      POSTGRES_USER: gigauser
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports: ["5555:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gigauser -d product_catalog"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    hostname: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_ENDPOINT: minio:9000
+    ports:
+      - "1488:1488"
+    command: ["./subscription-service"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:1488/health | grep -q 'OK' || exit 1"]
+      disable: true
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    ports:
+      - "8080:8080"
+    environment:
+      URL: "http://app:1488/docs/openapi.yaml"
+    depends_on:
+      app:
+        condition: service_started
+
+volumes:
+  pgdata:
+  minio_data:

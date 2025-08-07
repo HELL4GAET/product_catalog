@@ -34,7 +34,7 @@ func NewUserHandler(svc UserService, logger *zap.Logger) *UserHandler {
 
 func (h *UserHandler) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Post("/", h.Register)
+	r.Post("/register", h.Register)
 	r.Post("/login", h.Login)
 	r.Get("/", h.GetAllUsers)
 	r.Put("/{id}", h.UpdateUserByID)

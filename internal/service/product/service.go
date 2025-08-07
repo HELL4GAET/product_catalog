@@ -45,8 +45,11 @@ func (s *Service) GetAllProducts(ctx context.Context) ([]domain.Product, error) 
 }
 
 func (s *Service) UpdateProductByID(ctx context.Context, id int, product *domain.Product) error {
-
-	return
+	err := s.repo.UpdateByID(ctx, id, product)
+	if err != nil {
+		return fmt.Errorf("failed to update product: %w", err)
+	}
+	return nil
 }
 
 func (s *Service) DeleteProductByID(ctx context.Context, id int) error {
