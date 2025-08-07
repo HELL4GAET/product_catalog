@@ -29,15 +29,24 @@ func (s *Service) CreateProduct(ctx context.Context, product *domain.Product) (i
 }
 
 func (s *Service) GetProductByID(ctx context.Context, id int) (*domain.Product, error) {
-	return s.repo.GetByID(ctx, id)
+	product, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get product by id: %w", err)
+	}
+	return product, nil
 }
 
 func (s *Service) GetAllProducts(ctx context.Context) ([]domain.Product, error) {
-	return s.repo.GetAll(ctx)
+	product, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all products: %w", err)
+	}
+	return product, nil
 }
 
 func (s *Service) UpdateProductByID(ctx context.Context, id int, product *domain.Product) error {
-	return s.repo.UpdateByID(ctx, id, product)
+
+	return
 }
 
 func (s *Service) DeleteProductByID(ctx context.Context, id int) error {
