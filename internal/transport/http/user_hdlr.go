@@ -14,8 +14,6 @@ import (
 	"strconv"
 )
 
-var ctx = context.Background()
-
 type UserService interface {
 	CreateUser(ctx context.Context, user *dto.CreateUserInput) error
 	GetUserByID(ctx context.Context, id int) (*domain.User, error)
@@ -37,6 +35,10 @@ func NewUserHandler(svc UserService, logger *zap.Logger) *UserHandler {
 func (h *UserHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Post("/", h.Register)
+	r.Post("/login", h.Login)
+	r.Get("/", h.GetAllUsers)
+	r.Put("/{id}", h.UpdateUserByID)
+	r.Delete("/{id}", h.DeleteUserByID)
 	return r
 }
 
@@ -54,7 +56,7 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	err := h.svc.CreateUser(ctx, &input)
+	err := h.svc.CreateUser(r.Context(), &input)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		h.logger.Error("failed to create user", zap.Error(err), zap.String("email", input.Email), zap.String("username", input.Username))
