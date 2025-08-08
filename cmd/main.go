@@ -8,15 +8,15 @@ import (
 	"os"
 	"path/filepath"
 	"product-catalog/internal/config"
-	"product-catalog/internal/di"
+	"product-catalog/internal/dependencies"
 )
 
 func main() {
 	cfg := config.Load()
 
-	d, err := di.New(cfg)
+	d, err := dependencies.New(cfg)
 	if err != nil {
-		log.Fatalf("failed to init di: %v", err)
+		log.Fatalf("failed to init dependencies: %v", err)
 	}
 	defer d.DBPool.Close()
 	defer d.Logger.Sync()
