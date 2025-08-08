@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 	"mime/multipart"
 	"net/http"
+	"product-catalog/internal/auth"
 	"product-catalog/internal/domain"
 	"strconv"
 	"time"
@@ -25,22 +26,28 @@ type FileService interface {
 }
 
 type ProductHandler struct {
-	productSvc ProductService
-	fileSvc    FileService
-	logger     *zap.Logger
+	productSvc     ProductService
+	fileSvc        FileService
+	logger         *zap.Logger
+	authMiddleware func(http.Handler) http.Handler
 }
 
-func NewProductHandler(productCvc ProductService, fileSvc FileService, logger *zap.Logger) *ProductHandler {
-	return &ProductHandler{productSvc: productCvc, fileSvc: fileSvc, logger: logger}
+func NewProductHandler(productCvc ProductService, fileSvc FileService, logger *zap.Logger, authMiddleware *auth.Middleware) *ProductHandler {
+	return &ProductHandler{productSvc: productCvc, fileSvc: fileSvc, logger: logger, authMiddleware: authMiddleware.AuthMiddleware}
 }
 
 func (h *ProductHandler) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Post("/", h.CreateProduct)
+
+	r.Group(func(r chi.Router) {
+		r.Use(h.authMiddleware)
+		r.Post("/", h.CreateProduct)
+		r.Put("/{id}", h.UpdateProductByID)
+		r.Delete("/{id}", h.DeleteProductByID)
+	})
+
 	r.Get("/", h.GetAllProducts)
 	r.Get("/{id}", h.GetProductByID)
-	r.Put("/{id}", h.UpdateProductByID)
-	r.Delete("/{id}", h.DeleteProductByID)
 	return r
 }
 

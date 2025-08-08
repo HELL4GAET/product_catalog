@@ -22,7 +22,7 @@ func main() {
 	defer d.Logger.Sync()
 
 	r := chi.NewRouter()
-	r.Use(d.HTTPMiddleware...)
+	r.Use(d.LoggingMiddleware.LoggingMiddleware)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

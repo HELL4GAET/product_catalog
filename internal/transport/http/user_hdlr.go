@@ -24,21 +24,25 @@ type UserService interface {
 }
 
 type UserHandler struct {
-	svc    UserService
-	logger *zap.Logger
+	svc            UserService
+	logger         *zap.Logger
+	authMiddleware func(http.Handler) http.Handler
 }
 
-func NewUserHandler(svc UserService, logger *zap.Logger) *UserHandler {
-	return &UserHandler{svc: svc, logger: logger}
+func NewUserHandler(svc UserService, logger *zap.Logger, authMiddleware *auth.Middleware) *UserHandler {
+	return &UserHandler{svc: svc, logger: logger, authMiddleware: authMiddleware.AuthMiddleware}
 }
 
 func (h *UserHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Post("/register", h.Register)
 	r.Post("/login", h.Login)
-	r.Get("/", h.GetAllUsers)
-	r.Put("/{id}", h.UpdateUserByID)
-	r.Delete("/{id}", h.DeleteUserByID)
+	r.Group(func(r chi.Router) {
+		r.Use(h.authMiddleware)
+		r.Get("/", h.GetAllUsers)
+		r.Put("/{id}", h.UpdateUserByID)
+		r.Delete("/{id}", h.DeleteUserByID)
+	})
 	return r
 }
 
@@ -82,9 +86,11 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	input := dto.LoginInput{
-		Email:    r.FormValue("email"),
-		Password: r.FormValue("password"),
+	var input dto.LoginInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.logger.Warn("invalid request body", zap.Error(err))
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
 	}
 
 	h.logger.Info("login attempt", zap.String("email", input.Email))

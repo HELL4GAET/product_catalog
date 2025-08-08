@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
-	"net/http"
 	"product-catalog/internal/adapters/storage"
 	"product-catalog/internal/infra/db/pg"
 	"product-catalog/internal/service/file"
@@ -23,8 +22,8 @@ type Deps struct {
 	Logger *zap.Logger
 	DBPool *pgxpool.Pool
 
-	AuthMiddleware *auth.Middleware
-	HTTPMiddleware []func(http.Handler) http.Handler
+	AuthMiddleware    *auth.Middleware
+	LoggingMiddleware *h.LoggingMiddleware
 
 	UserService    *user.Service
 	ProductService *product.Service
@@ -62,25 +61,20 @@ func New(cfg *config.Config) (*Deps, error) {
 	}
 	fileSvc := file.NewFileService(minioStorage)
 
-	userH := h.NewUserHandler(userSvc, logger)
-	productH := h.NewProductHandler(prodSvc, fileSvc, logger)
-
-	httpMiddles := []func(handler http.Handler) http.Handler{
-		loggingM.LoggingMiddleware,
-		authM.AuthMiddleware,
-	}
+	userH := h.NewUserHandler(userSvc, logger, authM)
+	productH := h.NewProductHandler(prodSvc, fileSvc, logger, authM)
 
 	return &Deps{
-		Cfg:            cfg,
-		Logger:         logger,
-		DBPool:         pool,
-		AuthMiddleware: authM,
-		HTTPMiddleware: httpMiddles,
-		UserService:    userSvc,
-		ProductService: prodSvc,
-		FileService:    fileSvc,
-		UserHandler:    userH,
-		ProductHandler: productH,
+		Cfg:               cfg,
+		Logger:            logger,
+		DBPool:            pool,
+		AuthMiddleware:    authM,
+		LoggingMiddleware: loggingM,
+		UserService:       userSvc,
+		ProductService:    prodSvc,
+		FileService:       fileSvc,
+		UserHandler:       userH,
+		ProductHandler:    productH,
 	}, nil
 
 }
