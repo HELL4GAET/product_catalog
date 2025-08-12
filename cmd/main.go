@@ -47,10 +47,6 @@ func main() {
 		r.Handle("/*", http.StripPrefix("/docs/", http.FileServer(http.Dir(docsPath))))
 	})
 
-	//workDir, _ := os.Getwd()
-	//docsPath := filepath.Join(workDir, "docs")
-	//r.Handle("/docs/*", http.StripPrefix("/docs/", http.FileServer(http.Dir(docsPath))))
-
 	addr := ":" + cfg.Server.Port
 	d.Logger.Info("server started", zap.String("addr", addr))
 	d.Logger.Info("OpenAPI spec available at", zap.String("url", "http://localhost"+addr+"/docs/openapi.yaml"))
