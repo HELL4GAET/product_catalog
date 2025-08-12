@@ -119,10 +119,12 @@ func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		h.logger.Warn("role not found in context")
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
 	}
 	if role != auth.RoleAdmin {
 		h.logger.Warn("unauthorized access")
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
 	}
 	users, err := h.svc.GetAllUsers(r.Context())
 	if err != nil {

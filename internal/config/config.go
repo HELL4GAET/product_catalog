@@ -46,11 +46,13 @@ type DatabaseConfig struct {
 }
 
 type StorageConfig struct {
-	Endpoint  string `yaml:"endpoint"`
-	AccessKey string `yaml:"access_key"`
-	SecretKey string `yaml:"secret_key"`
-	UseSSL    bool   `yaml:"use_ssl"`
-	Bucket    string `yaml:"bucket"`
+	Endpoint       string `yaml:"endpoint"`
+	AccessKey      string `yaml:"access_key"`
+	SecretKey      string `yaml:"secret_key"`
+	UseSSL         bool   `yaml:"use_ssl"`
+	Bucket         string `yaml:"bucket"`
+	PublicEndpoint string `yaml:"public_endpoint"`
+	Region         string `yaml:"region"`
 }
 
 var (
@@ -80,6 +82,8 @@ func Load() *Config {
 
 		cfg.Storage.AccessKey = os.Getenv("MINIO_ACCESS_KEY")
 		cfg.Storage.SecretKey = os.Getenv("MINIO_SECRET_KEY")
+
+		cfg.Storage.PublicEndpoint = os.Getenv("MINIO_PUBLIC_ENDPOINT")
 
 		cfg.JWT.Secret = os.Getenv("JWT_SECRET")
 		cfg.Database.Pass = os.Getenv("DB_PASSWORD")

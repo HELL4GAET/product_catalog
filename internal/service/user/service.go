@@ -13,7 +13,7 @@ import (
 type Repository interface {
 	Create(ctx context.Context, user *domain.User) error
 	GetByID(ctx context.Context, id int) (*domain.User, error)
-	UpdateByID(ctx context.Context, id int, username, email string, role auth.Role) error
+	UpdateByID(ctx context.Context, id int, username, email string, role auth.Role, passwordHash string) error
 	DeleteByID(ctx context.Context, id int) error
 	GetAll(ctx context.Context) ([]domain.User, error)
 	ExistsByEmailOrUsername(ctx context.Context, email, username string) (bool, error)
@@ -94,7 +94,15 @@ func (s *Service) UpdateUserByID(ctx context.Context, requesterID, targetID int,
 		email = *input.Email
 	}
 
-	err = s.repo.UpdateByID(ctx, targetID, username, email, newRole)
+	passwordHash := userFromDB.PasswordHash
+	if input.Password != nil {
+		newPasswordHash, err := s.hasher.Hash(*input.Password)
+		if err != nil {
+			return fmt.Errorf("failed to hash password: %w", err)
+		}
+		passwordHash = newPasswordHash
+	}
+	err = s.repo.UpdateByID(ctx, targetID, username, email, newRole, passwordHash)
 	if err != nil {
 		return fmt.Errorf("failed to update user: %w", err)
 	}

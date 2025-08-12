@@ -93,18 +93,25 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	fileHeader := files[0]
 
-	imageURL, err := h.fileSvc.Upload(r.Context(), fileHeader)
+	key, err := h.fileSvc.Upload(r.Context(), fileHeader)
 	if err != nil {
 		h.logger.Error("failed to upload image", zap.Error(err))
 		http.Error(w, "upload error", http.StatusInternalServerError)
 		return
 	}
 
+	//url, err := h.fileSvc.GetPresignedURL(r.Context(), key)
+	//if err != nil {
+	//	h.logger.Error("failed to get presigned url", zap.Error(err))
+	//	http.Error(w, "upload error", http.StatusInternalServerError)
+	//	return
+	//}
+
 	prod := &domain.Product{
 		Title:       title,
 		Price:       int(price),
 		Description: description,
-		ImageURL:    imageURL,
+		ImageURL:    key,
 		CreatedAt:   time.Now(),
 	}
 
@@ -249,6 +256,21 @@ func (h *ProductHandler) UpdateProductByID(w http.ResponseWriter, r *http.Reques
 		w.WriteHeader(http.StatusOK)
 		return
 	}
+
+	product := &domain.Product{
+		Title:       title,
+		Price:       int(price),
+		Description: description,
+		Available:   available,
+	}
+	err = h.productSvc.UpdateProductByID(r.Context(), id, product)
+	if err != nil {
+		h.logger.Error("failed to update product", zap.Error(err))
+		http.Error(w, "update error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	return
 }
 
 func (h *ProductHandler) DeleteProductByID(w http.ResponseWriter, r *http.Request) {

@@ -21,7 +21,7 @@ func NewProductRepo(db *pgxpool.Pool) *ProductRepo {
 func (r *ProductRepo) Create(ctx context.Context, product *domain.Product) (int, error) {
 	const query = `INSERT INTO products (title, price, description, image_url, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id`
 	var productID int
-	err := r.db.QueryRow(ctx, query, product.Title, product.Price, product.Description, product.CreatedAt).Scan(&productID)
+	err := r.db.QueryRow(ctx, query, product.Title, product.Price, product.Description, product.ImageURL, product.CreatedAt).Scan(&productID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create product: %w", err)
 	}
@@ -29,7 +29,7 @@ func (r *ProductRepo) Create(ctx context.Context, product *domain.Product) (int,
 }
 
 func (r *ProductRepo) GetByID(ctx context.Context, id int) (*domain.Product, error) {
-	const query = `SELECT id, title, price, description, image_url, created_at FROM products WHERE id = $1`
+	const query = `SELECT id, title, price, description, available, image_url, created_at FROM products WHERE id = $1`
 	var productCard domain.Product
 	err := r.db.QueryRow(ctx, query, id).Scan(&productCard.ID, &productCard.Title, &productCard.Price, &productCard.Description, &productCard.Available, &productCard.ImageURL, &productCard.CreatedAt)
 	if err != nil {
@@ -42,20 +42,20 @@ func (r *ProductRepo) GetByID(ctx context.Context, id int) (*domain.Product, err
 }
 
 func (r *ProductRepo) GetAll(ctx context.Context) ([]domain.Product, error) {
-	const query = `SELECT * FROM products`
-	var products []domain.Product
-	row, err := r.db.Query(ctx, query)
+	const query = `SELECT id, title, price, available, description, image_url, created_at FROM products ORDER BY id`
+	rows, err := r.db.Query(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get products: %w", err)
+		return nil, fmt.Errorf("failed to get p: %w", err)
 	}
-	defer row.Close()
-	for row.Next() {
-		var productCard domain.Product
-		err = row.Scan(&productCard.ID, &productCard.Title, &productCard.Price, &productCard.Description, &productCard.Available, &productCard.ImageURL, &productCard.CreatedAt)
+	defer rows.Close()
+	var products []domain.Product
+	for rows.Next() {
+		var p domain.Product
+		err = rows.Scan(&p.ID, &p.Title, &p.Price, &p.Available, &p.Description, &p.ImageURL, &p.CreatedAt)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get products: %w", err)
+			return nil, fmt.Errorf("failed to scan product: %w", err)
 		}
-		products = append(products, productCard)
+		products = append(products, p)
 	}
 	return products, nil
 }

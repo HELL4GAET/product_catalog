@@ -56,7 +56,7 @@ func (r *UserRepo) GetAll(ctx context.Context) ([]domain.User, error) {
 	defer row.Close()
 	for row.Next() {
 		var userFromDB domain.User
-		err = row.Scan(&userFromDB.ID, &userFromDB.Username, &userFromDB.Email, &userFromDB.Role, &userFromDB.CreatedAt)
+		err = row.Scan(&userFromDB.ID, &userFromDB.Username, &userFromDB.Email, &userFromDB.PasswordHash, &userFromDB.Role, &userFromDB.CreatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get users: %w", err)
 		}
@@ -65,9 +65,9 @@ func (r *UserRepo) GetAll(ctx context.Context) ([]domain.User, error) {
 	return users, nil
 }
 
-func (r *UserRepo) UpdateByID(ctx context.Context, id int, username, email string, role auth.Role) error {
-	const query = `UPDATE users SET username = $1, email = $2, role = $3 WHERE id = $4`
-	_, err := r.db.Exec(ctx, query, username, email, role, id)
+func (r *UserRepo) UpdateByID(ctx context.Context, id int, username, email string, role auth.Role, passwordHash string) error {
+	const query = `UPDATE users SET username = $1, email = $2, role = $3, password_hash=$4 WHERE id = $5`
+	_, err := r.db.Exec(ctx, query, username, email, role, passwordHash, id)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {

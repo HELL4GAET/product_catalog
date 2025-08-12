@@ -24,11 +24,10 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
     ports:
       - "9000:9000"
-      - "9001:9001"
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "curl", "-f", "http://minio:9000/minio/health/live"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -61,7 +60,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      URL: "http://app:1488/docs/openapi.yaml"
+      URL: "http://localhost:1488/docs/openapi.yaml"
     depends_on:
       app:
         condition: service_started

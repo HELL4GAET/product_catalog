@@ -14,7 +14,6 @@ import (
 	"time"
 )
 
-// Добавляем ограничения
 const (
 	MaxFileSize  = 10 << 20
 	AllowedTypes = "image/jpeg,image/png,application/pdf"
@@ -22,7 +21,8 @@ const (
 )
 
 type Storage interface {
-	Upload(ctx context.Context, key string, body io.Reader, size int64, contentType string) (string, error)
+	Upload(ctx context.Context, key string, body io.Reader, size int64, contentType string) error
+	GetPresignedURL(ctx context.Context, key string, expiry time.Duration) (string, error)
 }
 
 type FileService struct {
@@ -62,7 +62,14 @@ func (s *FileService) Upload(ctx context.Context, fh *multipart.FileHeader) (str
 		return "", fmt.Errorf("generate key: %w", err)
 	}
 
-	url, err := s.sto.Upload(ctx, key, file, fh.Size, fh.Header.Get("Content-Type"))
+	if err := s.sto.Upload(ctx, key, file, fh.Size, fh.Header.Get("Content-Type")); err != nil {
+		return "", fmt.Errorf("upload file: %w", err)
+	}
+
+	url, err := s.sto.GetPresignedURL(ctx, key, 24*time.Hour)
+	if err != nil {
+		return "", fmt.Errorf("get presigned URL: %w", err)
+	}
 
 	return url, nil
 }
