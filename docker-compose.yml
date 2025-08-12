@@ -59,8 +59,10 @@ services:
     image: swaggerapi/swagger-ui
     ports:
       - "8080:8080"
+    volumes:
+      - ./docs:/usr/share/nginx/html/docs:ro
     environment:
-      URL: "http://localhost:1488/docs/openapi.yaml"
+      URL: "/docs/openapi.yaml"
     depends_on:
       app:
         condition: service_started

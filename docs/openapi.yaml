@@ -1,146 +1,38 @@
 openapi: 3.0.3
 info:
-  title: Product Catalog & Subscriptions API
+  title: Product Catalog & User Management API
   version: 1.0.0
   description: |
-    API для управления пользователями, продуктами (с изображениями в MinIO) и подсчётом стоимости подписок.
+    Comprehensive API for user management, product catalog with image storage.
+    Uses JWT for authentication.
+  contact:
+    name: API Support
+  license:
+    name: Proprietary
+
 servers:
   - url: http://localhost:1488
-    description: Local server
+    description: Local development server
 
-components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+security:
+  - bearerAuth: []
 
-  schemas:
-    ErrorResponse:
-      type: object
-      properties:
-        message:
-          type: string
-
-    User:
-      type: object
-      properties:
-        id:
-          type: integer
-        username:
-          type: string
-        email:
-          type: string
-        role:
-          type: string
-          enum: [user, admin]
-        avatar_url:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-
-    CreateUserInput:
-      type: object
-      required: [username, email, password]
-      properties:
-        username:
-          type: string
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-          minLength: 6
-
-    UpdateUserInput:
-      type: object
-      properties:
-        username:
-          type: string
-        email:
-          type: string
-        role:
-          type: string
-          enum: [user, admin]
-
-    LoginRequest:
-      type: object
-      required: [email, password]
-      properties:
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-
-    LoginResponse:
-      type: object
-      properties:
-        token:
-          type: string
-
-    Product:
-      type: object
-      properties:
-        id:
-          type: integer
-        title:
-          type: string
-        price:
-          type: number
-        description:
-          type: string
-        image_url:
-          type: string
-        available:
-          type: boolean
-        created_at:
-          type: string
-          format: date-time
-
-    SubscriptionSummaryResponse:
-      type: object
-      properties:
-        total:
-          type: number
-
-  responses:
-    BadRequest:
-      description: Bad Request
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-    Unauthorized:
-      description: Unauthorized
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-    Forbidden:
-      description: Forbidden
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-    NotFound:
-      description: Not Found
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-    InternalError:
-      description: Internal Server Error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
+tags:
+  - name: Authentication
+    description: User authentication operations
+  - name: User Management
+    description: User lifecycle operations
+  - name: Product Catalog
+    description: Product management operations
 
 paths:
-  /users:
+  /register:
     post:
-      summary: Create a new user
+      tags: [Authentication]
+      summary: Register new user
+      description: Creates a new user account with default 'user' role
+      operationId: registerUser
+      security: []
       requestBody:
         required: true
         content:
@@ -149,17 +41,26 @@ paths:
               $ref: '#/components/schemas/CreateUserInput'
       responses:
         '201':
-          description: User created
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "user created"
         '400':
           $ref: '#/components/responses/BadRequest'
-        '409':
-          description: Conflict (user exists)
         '500':
           $ref: '#/components/responses/InternalError'
 
   /login:
     post:
-      summary: Authenticate and receive JWT
+      tags: [Authentication]
+      summary: Authenticate user and obtain JWT
+      operationId: loginUser
+      security: []
       requestBody:
         required: true
         content:
@@ -168,42 +69,59 @@ paths:
               $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
-          description: OK
+          description: Successful authentication
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /users/{id}:
-    parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        required: true
+  /users:
     get:
-      summary: Get user by ID
-      security:
-        - bearerAuth: []
+      tags: [User Management]
+      summary: Retrieve all users (Admin only)
+      description: Get list of all users (requires admin role)
+      operationId: getAllUsers
       responses:
         '200':
-          description: OK
+          description: List of users
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /users/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+        description: Numeric ID of the user
+        example: 42
     put:
-      summary: Update user by ID
-      security:
-        - bearerAuth: []
+      tags: [User Management]
+      summary: Update user profile
+      description: Update user details (admin or same user only)
+      operationId: updateUser
       requestBody:
         required: true
         content:
@@ -212,7 +130,7 @@ paths:
               $ref: '#/components/schemas/UpdateUserInput'
       responses:
         '204':
-          description: No Content
+          description: User updated successfully
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -222,12 +140,13 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     delete:
-      summary: Delete user by ID
-      security:
-        - bearerAuth: []
+      tags: [User Management]
+      summary: Delete user account
+      description: Permanently delete user (admin only)
+      operationId: deleteUser
       responses:
         '204':
-          description: No Content
+          description: User deleted successfully
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -237,10 +156,12 @@ paths:
 
   /products:
     get:
+      tags: [Product Catalog]
       summary: List all products
+      operationId: listProducts
       responses:
         '200':
-          description: OK
+          description: Successful operation
           content:
             application/json:
               schema:
@@ -248,16 +169,16 @@ paths:
                 items:
                   $ref: '#/components/schemas/Product'
     post:
-      summary: Create product with image
-      security:
-        - bearerAuth: []
+      tags: [Product Catalog]
+      summary: Create new product (Authenticated only)
+      operationId: createProduct
       requestBody:
         required: true
         content:
           multipart/form-data:
             schema:
               type: object
-              required: [title, price, image]
+              required: [title, price, description, image]
               properties:
                 title:
                   type: string
@@ -272,7 +193,7 @@ paths:
                   format: binary
       responses:
         '201':
-          description: Created
+          description: Product created
           content:
             application/json:
               schema:
@@ -280,39 +201,37 @@ paths:
                 properties:
                   id:
                     type: integer
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          $ref: '#/components/responses/InternalError'
+                    example: 42
 
-  /products/{id}:
+  /products/{productId}:
     parameters:
-      - in: path
-        name: id
+      - name: productId
+        in: path
+        required: true
         schema:
           type: integer
-        required: true
+          minimum: 1
+        description: Numeric ID of the product
+        example: 101
     get:
-      summary: Get product by ID
+      tags: [Product Catalog]
+      summary: Get product details
+      operationId: getProductById
       responses:
         '200':
-          description: OK
+          description: Product details
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Product'
-        '404':
-          $ref: '#/components/responses/NotFound'
     put:
-      summary: Update product by ID
-      security:
-        - bearerAuth: []
+      tags: [Product Catalog]
+      summary: Update product details (Authenticated only)
+      operationId: updateProduct
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
               type: object
               properties:
@@ -324,9 +243,12 @@ paths:
                   type: string
                 available:
                   type: boolean
+                image:
+                  type: string
+                  format: binary
       responses:
-        '204':
-          description: No Content
+        '200':
+          description: Product updated successfully
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -334,56 +256,153 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     delete:
-      summary: Delete product by ID
-      security:
-        - bearerAuth: []
+      tags: [Product Catalog]
+      summary: Delete product (Authenticated only)
+      operationId: deleteProduct
       responses:
-        '204':
-          description: No Content
+        '200':
+          description: Product deleted successfully
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /subscriptions/summary:
-    get:
-      summary: Total subscription cost over period
-      security:
-        - bearerAuth: []
-      parameters:
-        - in: query
-          name: user_id
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Error message"
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: "johndoe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        role:
+          type: string
+          enum: [user, admin]
+          example: "user"
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-08-12T10:00:00Z"
+
+    CreateUserInput:
+      type: object
+      required: [username, email, password]
+      properties:
+        username:
+          type: string
+          example: "johndoe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        password:
+          type: string
+          minLength: 6
+          example: "strongpassword"
+
+    UpdateUserInput:
+      type: object
+      properties:
+        username:
+          type: string
+          example: "newusername"
+        email:
+          type: string
+          format: email
+          example: "newemail@example.com"
+        role:
+          type: string
+          enum: [user, admin]
+          example: "admin"
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        password:
+          type: string
+          example: "strongpassword"
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: "Cool product"
+        price:
+          type: number
+          format: float
+          example: 199.99
+        description:
+          type: string
+          example: "Detailed description"
+        image_url:
+          type: string
+          format: uri
+          example: "http://minio.example.com/products/p42.jpg"
+        available:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-08-12T10:00:00Z"
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
           schema:
-            type: string
-            format: uuid
-        - in: query
-          name: service_name
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
           schema:
-            type: string
-        - in: query
-          name: from
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
           schema:
-            type: string
-            example: "01-2025"
-          required: true
-          description: "Start of period (MM-YYYY)"
-        - in: query
-          name: to
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
           schema:
-            type: string
-            example: "06-2025"
-          required: true
-          description: "End of period (MM-YYYY)"
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubscriptionSummaryResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          $ref: '#/components/responses/InternalError'
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: Server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
